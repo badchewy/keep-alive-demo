@@ -1,0 +1,36 @@
+name: Keep GitHub Active
+
+on:
+  schedule:
+    - cron: '0 3 * * *'    # 每天 UTC 03:00 执行（cron 使用 UTC）
+  workflow_dispatch:       # 手动触发按钮（方便测试）
+
+permissions:
+  contents: write
+
+jobs:
+  keep-active:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: Record date to activity.log
+        run: |
+          mkdir -p logs
+          echo "$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> logs/activity.log
+          git status --porcelain
+
+      - name: Commit & push changes
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add logs/activity.log || true
+          if git diff --staged --quiet && git diff --quiet; then
+            git commit --allow-empty -m "chore: keep-alive $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          else
+            git commit -m "chore: keep-alive $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          fi
+          git push
